@@ -2,6 +2,20 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.1.12 - 2026-09-04
+
+### Added
+
+- Added native Metal command-buffer creation, submission, and synchronous
+  completion for backend bring-up and verification.
+- Added Metal color, depth, and combined color/depth attachment clears.
+- Added direct buffer writes and GPU-side buffer-to-buffer copies with bounds
+  validation.
+- Added an initial transient-memory implementation backed by mapped Metal
+  buffers.
+- Expanded the no-OpenGL backend self-test to submit real Metal commands and
+  verify a GPU-copied byte marker after completion.
+
 ## 0.1.11 - 2026-09-04
 
 ### Added

@@ -170,6 +170,21 @@ public final class NativeBridge {
       int addressModeV, int minFilter, int magFilter, int maxAnisotropy,
       double maxLod);
   public static native void nDestroyBackendSampler(long sampler);
+  public static native long nCreateBackendCommandBuffer();
+  public static native boolean nCommandBufferClearColor(long commandBuffer,
+      long texture, float red, float green, float blue, float alpha);
+  public static native boolean nCommandBufferClearDepth(long commandBuffer,
+      long texture, double depth);
+  public static native boolean nCommandBufferClearColorAndDepth(
+      long commandBuffer, long colorTexture, float red, float green,
+      float blue, float alpha, long depthTexture, double depth);
+  public static native boolean nWriteBackendBuffer(long buffer, long offset,
+      java.nio.ByteBuffer source, int sourceOffset, int length);
+  public static native boolean nCommandBufferCopyBuffer(long commandBuffer,
+      long source, long sourceOffset, long destination,
+      long destinationOffset, long length);
+  public static native void nSubmitBackendCommandBuffer(long commandBuffer,
+      boolean wait);
   public static native void nRegisterChunkMesh(int cx, int cy, int cz,
       long bufferHandle, int quadCount, int opaqueQuadCount, int lodLevel);
   public static native void nUnregisterChunkMesh(int cx, int cy, int cz);

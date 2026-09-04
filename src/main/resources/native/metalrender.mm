@@ -3641,3 +3641,149 @@ Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nDestroyBackendSamp
       (id<MTLSamplerState>)(void *)(uintptr_t)samplerHandle;
   [sampler release];
 }
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCreateBackendCommandBuffer(
+    JNIEnv *, jclass) {
+  ensure_device();
+  if (!g_queue)
+    return 0;
+  id<MTLCommandBuffer> commandBuffer = [[g_queue commandBuffer] retain];
+  return (jlong)(uintptr_t)commandBuffer;
+}
+
+static bool backend_clear_attachments(id<MTLCommandBuffer> commandBuffer,
+                                      id<MTLTexture> colorTexture,
+                                      MTLClearColor color,
+                                      id<MTLTexture> depthTexture,
+                                      double depth) {
+  if (!commandBuffer || (!colorTexture && !depthTexture))
+    return false;
+  MTLRenderPassDescriptor *pass =
+      [MTLRenderPassDescriptor renderPassDescriptor];
+  if (colorTexture) {
+    pass.colorAttachments[0].texture = colorTexture;
+    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    pass.colorAttachments[0].clearColor = color;
+  }
+  if (depthTexture) {
+    pass.depthAttachment.texture = depthTexture;
+    pass.depthAttachment.loadAction = MTLLoadActionClear;
+    pass.depthAttachment.storeAction = MTLStoreActionStore;
+    pass.depthAttachment.clearDepth = depth;
+  }
+  id<MTLRenderCommandEncoder> encoder =
+      [commandBuffer renderCommandEncoderWithDescriptor:pass];
+  if (!encoder)
+    return false;
+  [encoder endEncoding];
+  return true;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCommandBufferClearColor(
+    JNIEnv *, jclass, jlong commandBufferHandle, jlong textureHandle,
+    jfloat red, jfloat green, jfloat blue, jfloat alpha) {
+  id<MTLCommandBuffer> commandBuffer =
+      (id<MTLCommandBuffer>)(void *)(uintptr_t)commandBufferHandle;
+  id<MTLTexture> texture =
+      (id<MTLTexture>)(void *)(uintptr_t)textureHandle;
+  return backend_clear_attachments(commandBuffer, texture,
+      MTLClearColorMake(red, green, blue, alpha), nil, 1.0)
+      ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCommandBufferClearDepth(
+    JNIEnv *, jclass, jlong commandBufferHandle, jlong textureHandle,
+    jdouble depth) {
+  id<MTLCommandBuffer> commandBuffer =
+      (id<MTLCommandBuffer>)(void *)(uintptr_t)commandBufferHandle;
+  id<MTLTexture> texture =
+      (id<MTLTexture>)(void *)(uintptr_t)textureHandle;
+  return backend_clear_attachments(commandBuffer, nil,
+      MTLClearColorMake(0, 0, 0, 0), texture, depth)
+      ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCommandBufferClearColorAndDepth(
+    JNIEnv *, jclass, jlong commandBufferHandle, jlong colorTextureHandle,
+    jfloat red, jfloat green, jfloat blue, jfloat alpha,
+    jlong depthTextureHandle, jdouble depth) {
+  id<MTLCommandBuffer> commandBuffer =
+      (id<MTLCommandBuffer>)(void *)(uintptr_t)commandBufferHandle;
+  id<MTLTexture> colorTexture =
+      (id<MTLTexture>)(void *)(uintptr_t)colorTextureHandle;
+  id<MTLTexture> depthTexture =
+      (id<MTLTexture>)(void *)(uintptr_t)depthTextureHandle;
+  return backend_clear_attachments(commandBuffer, colorTexture,
+      MTLClearColorMake(red, green, blue, alpha), depthTexture, depth)
+      ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nWriteBackendBuffer(
+    JNIEnv *env, jclass, jlong bufferHandle, jlong offset, jobject source,
+    jint sourceOffset, jint length) {
+  id<MTLBuffer> buffer =
+      (id<MTLBuffer>)(void *)(uintptr_t)bufferHandle;
+  uint8_t *sourceBytes =
+      source ? (uint8_t *)env->GetDirectBufferAddress(source) : nullptr;
+  jlong sourceCapacity =
+      source ? env->GetDirectBufferCapacity(source) : -1;
+  if (!buffer || !sourceBytes || offset < 0 || sourceOffset < 0 || length < 0 ||
+      (NSUInteger)(offset + length) > buffer.length ||
+      (jlong)sourceOffset + length > sourceCapacity)
+    return JNI_FALSE;
+  memcpy((uint8_t *)buffer.contents + (NSUInteger)offset,
+         sourceBytes + sourceOffset, (size_t)length);
+  return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCommandBufferCopyBuffer(
+    JNIEnv *, jclass, jlong commandBufferHandle, jlong sourceHandle,
+    jlong sourceOffset, jlong destinationHandle, jlong destinationOffset,
+    jlong length) {
+  id<MTLCommandBuffer> commandBuffer =
+      (id<MTLCommandBuffer>)(void *)(uintptr_t)commandBufferHandle;
+  id<MTLBuffer> source = (id<MTLBuffer>)(void *)(uintptr_t)sourceHandle;
+  id<MTLBuffer> destination =
+      (id<MTLBuffer>)(void *)(uintptr_t)destinationHandle;
+  if (!commandBuffer || !source || !destination || sourceOffset < 0 ||
+      destinationOffset < 0 || length < 0 ||
+      (NSUInteger)(sourceOffset + length) > source.length ||
+      (NSUInteger)(destinationOffset + length) > destination.length)
+    return JNI_FALSE;
+  id<MTLBlitCommandEncoder> encoder = [commandBuffer blitCommandEncoder];
+  if (!encoder)
+    return JNI_FALSE;
+  [encoder copyFromBuffer:source
+             sourceOffset:(NSUInteger)sourceOffset
+                 toBuffer:destination
+        destinationOffset:(NSUInteger)destinationOffset
+                     size:(NSUInteger)length];
+  [encoder endEncoding];
+  return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nSubmitBackendCommandBuffer(
+    JNIEnv *env, jclass, jlong commandBufferHandle, jboolean wait) {
+  id<MTLCommandBuffer> commandBuffer =
+      (id<MTLCommandBuffer>)(void *)(uintptr_t)commandBufferHandle;
+  if (!commandBuffer)
+    return;
+  [commandBuffer commit];
+  if (wait) {
+    [commandBuffer waitUntilCompleted];
+    if (commandBuffer.status == MTLCommandBufferStatusError) {
+      NSString *message = commandBuffer.error.localizedDescription;
+      dbg("Backend command buffer failed: %s\n",
+          message ? message.UTF8String : "unknown error");
+    }
+  }
+  [commandBuffer release];
+}

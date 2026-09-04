@@ -12,12 +12,15 @@ import com.mojang.blaze3d.textures.AddressMode;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.pebbles_boon.metalrender.backend.metal.MetalGpuBuffer;
+import com.pebbles_boon.metalrender.backend.metal.MetalCommandEncoder;
 import com.pebbles_boon.metalrender.backend.metal.MetalGpuSampler;
 import com.pebbles_boon.metalrender.backend.metal.MetalGpuTexture;
 import com.pebbles_boon.metalrender.backend.metal.MetalGpuTextureView;
 import com.pebbles_boon.metalrender.nativebridge.NativeBridge;
 import com.pebbles_boon.metalrender.util.MetalLogger;
 import java.util.OptionalDouble;
+import java.nio.ByteBuffer;
+import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeCocoa;
 
@@ -70,17 +73,18 @@ public final class MetalGpuBackend implements GpuBackend {
         throw unavailable("Metal could not present to Minecraft's no-API window");
       }
       validateResourceLayer();
+      validateCommandLayer();
     } catch (BackendCreationException exception) {
       throw exception;
     } catch (Throwable throwable) {
       throw unavailable("Metal window bootstrap failed: " + throwable);
     }
 
-    MetalLogger.info("Full-window Metal bootstrap and resource self-test "
-        + "passed with GLFW_NO_API; falling back until command encoding is "
-        + "complete");
-    throw unavailable("Metal window and resource bootstrap passed; native "
-        + "command encoding is still in progress");
+    MetalLogger.info("Full-window Metal bootstrap, resources, clears, and GPU "
+        + "buffer-copy self-test passed with GLFW_NO_API; falling back until "
+        + "render passes and pipelines are complete");
+    throw unavailable("Metal resource and basic command encoding passed; "
+        + "render passes and pipelines are still in progress");
   }
 
   private static void validateResourceLayer() {
@@ -101,6 +105,37 @@ public final class MetalGpuBackend implements GpuBackend {
       }
       if (view.handle() == 0 || sampler.handle() == 0) {
         throw new IllegalStateException("Metal resource handle was null");
+      }
+    }
+  }
+
+  private static void validateCommandLayer() {
+    long markerA = 0x4d4554414c434d44L;
+    long markerB = 0x434f505950415353L;
+    try (MetalGpuBuffer source = new MetalGpuBuffer(
+             GpuBuffer.USAGE_COPY_SRC | GpuBuffer.USAGE_MAP_WRITE, 64);
+         MetalGpuBuffer destination = new MetalGpuBuffer(
+             GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_MAP_READ, 64);
+         MetalGpuTexture color = new MetalGpuTexture(
+             GpuTexture.USAGE_RENDER_ATTACHMENT, "Metal command color test",
+             GpuFormat.RGBA8_UNORM, 4, 4, 1, 1);
+         MetalGpuTexture depth = new MetalGpuTexture(
+             GpuTexture.USAGE_RENDER_ATTACHMENT, "Metal command depth test",
+             GpuFormat.D32_FLOAT, 4, 4, 1, 1)) {
+      MetalCommandEncoder encoder = new MetalCommandEncoder();
+      ByteBuffer marker = ByteBuffer.allocateDirect(16);
+      marker.putLong(markerA).putLong(markerB).flip();
+      encoder.writeToBuffer(source.slice(8, 16), marker);
+      encoder.copyToBuffer(source.slice(8, 16), destination.slice(24, 16));
+      encoder.clearColorAndDepthTextures(color,
+          new Vector4f(0.02f, 0.18f, 0.08f, 1.0f), depth, 1.0);
+      encoder.submitAndWait();
+
+      try (var mapped = destination.map(24, 16, true, false)) {
+        if (mapped.data().getLong(0) != markerA
+            || mapped.data().getLong(8) != markerB) {
+          throw new IllegalStateException("Metal GPU buffer copy verification failed");
+        }
       }
     }
   }
