@@ -2,6 +2,24 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.2.1 - 2026-09-04
+
+### Added
+
+- Added Iris 1.11.2 to the Minecraft 26.2 development runtime and marked it as
+  an optional supported integration target.
+- Added the first no-OpenGL Iris compatibility layer: portable sampler limits,
+  Vulkan-safe texture hooks, and isolation for Iris' OpenGL-only startup code.
+
+### Changed
+
+- Iris can now coexist with MetalRender through complete title-screen resource
+  loading while Minecraft remains on Vulkan over MoltenVK with no OpenGL
+  context.
+- Shader-pack program execution remains disabled until Iris render targets and
+  GLSL-to-SPIR-V pipeline creation are implemented; this milestone does not
+  claim shader rendering support.
+
 ## 0.2.0 - 2026-09-04
 
 ### Added

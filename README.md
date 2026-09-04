@@ -13,6 +13,7 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
 | Dependency    | Necessity                      | Where to get                                                            |
 | ------------- | ------------------------------ | ----------------------------------------------------------------------- |
 | Sodium        | Necessary                      | [Modrinth](https://modrinth.com/mod/sodium)                             |
+| Iris 1.11.2   | Optional, integration testing  | [Modrinth](https://modrinth.com/mod/iris)                               |
 | Fabric        | Necessary                      | [Fabric's official page](https://fabricmc.net/use/installer/)           |
 | Fabric API    | Necessary                      | [Modrinth](https://modrinth.com/mod/fabric-api)                         |
 | Java JVM 25   | Necessary                      | [Oracle](https://www.oracle.com/us/java/technologies/downloads/) |
@@ -33,7 +34,9 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
 
 - Only works on Metal (macOS)
 - Will still load on other GPUs but won't offer any additional benefits or changes
-- Shaders are not yet supported, they might be added in the future
+- Iris 1.11.2 can coexist with the no-OpenGL backend and complete title-screen
+  loading. Shader-pack rendering is not enabled yet; the GLSL-to-SPIR-V
+  compiler and Vulkan render-pass integration are the next milestone.
 - The operational backend is translated through MoltenVK; it is not yet the
   pure native MSL path
 - To restore Minecraft's normal backend selection, launch with

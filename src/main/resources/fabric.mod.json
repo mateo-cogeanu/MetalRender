@@ -24,6 +24,7 @@
     "fabric-api": "*"
   },
   "suggests": {
-    "sodium": ">=0.9.1"
+    "sodium": ">=0.9.1",
+    "iris": ">=1.11.2"
   }
 }

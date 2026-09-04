@@ -25,6 +25,10 @@
     "ClientWorldMixin",
     "OptionsScreenMixin",
     "ChunkLoadMixin",
+    "iris.IrisInitializationMixin",
+    "iris.IrisGpuTextureMixin",
+    "iris.IrisRenderSystemMixin",
+    "iris.IrisSamplerLimitsMixin",
     "accessor.BillboardParticleAccessor",
     "accessor.ParticleAccessor",
     "accessor.ParticleManagerAccessor"
