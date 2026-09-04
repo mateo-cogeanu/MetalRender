@@ -6,6 +6,7 @@ import com.mojang.blaze3d.shaders.ShaderSource;
 import com.mojang.blaze3d.systems.BackendCreationException;
 import com.mojang.blaze3d.systems.GpuBackend;
 import com.mojang.blaze3d.systems.GpuDevice;
+import com.mojang.blaze3d.vulkan.VulkanBackend;
 import com.mojang.blaze3d.GpuFormat;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.textures.AddressMode;
@@ -21,42 +22,41 @@ import com.pebbles_boon.metalrender.util.MetalLogger;
 import java.util.OptionalDouble;
 import java.nio.ByteBuffer;
 import org.joml.Vector4f;
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeCocoa;
 
 /**
  * Bootstrap for the native Minecraft 26.2 GPU backend contract.
  *
  * <p>This backend currently proves that Minecraft can create its real window
- * without an OpenGL context and that Metal can present to that window. It then
- * fails creation deliberately so Minecraft can recreate the window using its
- * next configured backend. Returning a device before all resource and command
- * contracts are implemented would turn an expected fallback into a later
- * startup crash.</p>
+ * without an OpenGL context and that Metal can present to that window. Until
+ * the native MSL pipeline compiler is complete, the production device is
+ * supplied by Minecraft's Vulkan backend, which runs over MoltenVK on macOS.
+ * This keeps the whole frame on Metal without exposing an incomplete native
+ * device to the rest of Minecraft.</p>
  */
 public final class MetalGpuBackend implements GpuBackend {
   public static final String ENABLE_PROPERTY =
       "metalrender.experimental.fullMetalBackend";
+  private final VulkanBackend compatibilityBackend = new VulkanBackend();
+
+  public static boolean isRequested() {
+    return Boolean.parseBoolean(System.getProperty(ENABLE_PROPERTY, "true"));
+  }
 
   @Override
   public String getName() {
-    return "Metal (experimental bootstrap)";
+    return "Metal via MoltenVK (experimental)";
   }
 
   @Override
   public void setWindowHints() {
-    GLFW.glfwWindowHint(GLFW.GLFW_CLIENT_API, GLFW.GLFW_NO_API);
+    compatibilityBackend.setWindowHints();
   }
 
   @Override
   public void handleWindowCreationErrors(GLFWErrorCapture.Error error)
       throws BackendCreationException {
-    String detail = error == null
-        ? "GLFW could not create a no-API Metal window"
-        : "GLFW could not create a no-API Metal window (error 0x"
-            + Integer.toHexString(error.error()) + ")";
-    throw new BackendCreationException(detail,
-        BackendCreationException.Reason.GLFW_ERROR);
+    compatibilityBackend.handleWindowCreationErrors(error);
   }
 
   @Override
@@ -80,11 +80,11 @@ public final class MetalGpuBackend implements GpuBackend {
       throw unavailable("Metal window bootstrap failed: " + throwable);
     }
 
-    MetalLogger.info("Full-window Metal bootstrap, resources, clears, and GPU "
-        + "buffer-copy self-test passed with GLFW_NO_API; falling back until "
-        + "render passes and pipelines are complete");
-    throw unavailable("Metal resource and basic command encoding passed; "
-        + "render passes and pipelines are still in progress");
+    MetalLogger.info("Native Metal bootstrap and command self-test passed; "
+        + "starting Minecraft's Vulkan device through MoltenVK so rendering "
+        + "remains on Metal without an OpenGL context");
+    return compatibilityBackend.createDevice(window, shaderSource,
+        debugOptions, criticalShaderLoader);
   }
 
   private static void validateResourceLayer() {

@@ -26,9 +26,9 @@ public class MetalRenderClient implements ClientModInitializer {
     config = MetalRenderConfig.load();
     MetalHudOverlay.register();
     if (!config.enableMetalRendering) {
-      MetalLogger.info("Legacy hybrid renderer disabled; Sodium will render "
-          + "without duplicate Metal chunk work. Enable only for development "
-          + "with -Dmetalrender.enabled=true");
+      MetalLogger.info("Legacy duplicate renderer disabled; GPU backend "
+          + "selection continues independently. Enable the legacy path only "
+          + "for development with -Dmetalrender.enabled=true");
       return;
     }
     try {

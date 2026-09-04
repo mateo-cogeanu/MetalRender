@@ -1,5 +1,7 @@
 package com.pebbles_boon.metalrender.gui;
 import com.pebbles_boon.metalrender.MetalRenderClient;
+import com.pebbles_boon.metalrender.backend.MetalGpuBackend;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.pebbles_boon.metalrender.nativebridge.MetalHardwareChecker;
 import com.pebbles_boon.metalrender.nativebridge.DirectMetalPresentationProbe;
 import com.pebbles_boon.metalrender.render.MetalWorldRenderer;
@@ -26,12 +28,24 @@ public final class MetalHudOverlay {
     }
     var font = minecraft.font;
     MetalWorldRenderer renderer = MetalRenderClient.getWorldRenderer();
+    String backendName = "unavailable";
+    String driverInfo = "";
+    try {
+      var deviceInfo = RenderSystem.getDevice().getDeviceInfo();
+      backendName = deviceInfo.backendName();
+      driverInfo = deviceInfo.driverInfo();
+    } catch (Throwable ignored) {
+    }
+    boolean moltenVkActive = MetalGpuBackend.isRequested()
+        && "Vulkan".equals(backendName) && driverInfo.contains("MoltenVK");
     boolean initialized = MetalRenderClient.isEnabled() && renderer != null &&
         renderer.isReady();
     boolean verified = initialized && renderer.getMetalFramesSubmitted() > 0 &&
         renderer.getSuccessfulCompositeCount() > 0;
+    boolean activeOutput = moltenVkActive || verified;
     List<String> lines = new ArrayList<>();
-    lines.add(verified ? "MetalRender: VERIFIED METAL FRAMES"
+    lines.add(moltenVkActive ? "MetalRender: ACTIVE VIA MOLTENVK"
+        : verified ? "MetalRender: VERIFIED NATIVE METAL FRAMES"
                        : initialized ? "MetalRender: initialized; no verified output"
                                      : "MetalRender: inactive");
     lines.add("Device: " + MetalHardwareChecker.getDeviceName());
@@ -48,7 +62,8 @@ public final class MetalHudOverlay {
           renderer.getFastPathCompositeCount(), renderer.getSlowPathCompositeCount(),
           renderer.getTextureManager().isUsingFallbackBlockAtlas() ? "yes" : "no"));
     }
-    lines.add("Window backend: OpenGL (hybrid presentation)");
+    lines.add("Window backend: " + backendName
+        + (moltenVkActive ? " (MoltenVK -> Metal)" : ""));
     if (DirectMetalPresentationProbe.isRequested()) {
       lines.add(String.format("Direct CAMetalLayer probe: %s  frames:%d",
           DirectMetalPresentationProbe.isActive() ? "active" : "failed",
@@ -63,7 +78,7 @@ public final class MetalHudOverlay {
     context.fill(x - 3, y - 3, x + width + 3,
         y + lines.size() * lineHeight + 2, BACKGROUND);
     for (int i = 0; i < lines.size(); i++) {
-      int color = i == 0 ? (verified ? COLOR_OK : COLOR_WARN) : COLOR_INFO;
+      int color = i == 0 ? (activeOutput ? COLOR_OK : COLOR_WARN) : COLOR_INFO;
       context.text(font, lines.get(i), x, y + i * lineHeight, color, true);
     }
   }

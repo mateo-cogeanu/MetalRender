@@ -2,6 +2,25 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.2.0 - 2026-09-04
+
+### Added
+
+- Added an operational no-OpenGL rendering path on macOS by handing the
+  verified `GLFW_NO_API` window to Minecraft's Vulkan backend, which executes
+  on Metal through MoltenVK.
+- Enabled the no-OpenGL backend path by default on macOS. It can be disabled
+  with `-Dmetalrender.experimental.fullMetalBackend=false`.
+- Added runtime HUD detection for Vulkan-over-MoltenVK, including an accurate
+  `ACTIVE VIA MOLTENVK` state and dynamic window-backend reporting.
+
+### Changed
+
+- The experimental backend no longer deliberately falls back after its native
+  Metal resource and command self-tests pass.
+- Kept the duplicate legacy hybrid renderer disabled while native MSL shader
+  compilation and render-pass support remain under development.
+
 ## 0.1.12 - 2026-09-04
 
 ### Added

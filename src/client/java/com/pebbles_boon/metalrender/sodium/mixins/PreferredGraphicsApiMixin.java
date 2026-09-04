@@ -14,7 +14,7 @@ public abstract class PreferredGraphicsApiMixin {
   @Inject(method = "getBackendsToTry", at = @At("RETURN"), cancellable = true)
   private void metalrender$prependMetalBackend(
       CallbackInfoReturnable<GpuBackend[]> callback) {
-    if (!Boolean.getBoolean(MetalGpuBackend.ENABLE_PROPERTY)
+    if (!MetalGpuBackend.isRequested()
         || !System.getProperty("os.name", "").startsWith("Mac")) {
       return;
     }

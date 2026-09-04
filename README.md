@@ -1,7 +1,9 @@
 # MetalRender
 
-**MetalRender** is a custom rendering backend for Minecraft.  
-It uses **Apple Metal** to replace Sodium's backend rendering to offer faster frames on Mac!
+**MetalRender** is a macOS rendering-backend project for Minecraft.
+Version 0.2 uses Minecraft's Vulkan renderer through **MoltenVK**, so frames run
+on Apple Metal without creating an OpenGL context. A pure native MSL backend is
+still under development.
 MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes your game speedy) by Cortex
 
 ---
@@ -18,7 +20,9 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
 
 ## Features
 
-- Uses **Metal** for rendering on macOS
+- Uses **Vulkan over MoltenVK/Metal** for complete rendering on macOS
+- Creates the Minecraft window without an OpenGL context
+- Includes an in-progress native Metal resource and command backend
 - Works with **Fabric Loader** and **Sodium**
 - Checks your hardware before starting
 - Turns off safely if Metal is not supported
@@ -30,6 +34,10 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
 - Only works on Metal (macOS)
 - Will still load on other GPUs but won't offer any additional benefits or changes
 - Shaders are not yet supported, they might be added in the future
+- The operational backend is translated through MoltenVK; it is not yet the
+  pure native MSL path
+- To restore Minecraft's normal backend selection, launch with
+  `-Dmetalrender.experimental.fullMetalBackend=false`
 - This should be compatible with most other mods, if it isn't please add a Issue
 - MarioMastr helped me a ton by making a fork that addressed some MAJOR issues in native code! Thank them too!
 
