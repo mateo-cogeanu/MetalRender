@@ -3452,3 +3452,192 @@ Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nProbeMetalBackendW
       presented ? "presented" : "failed");
   return presented ? JNI_TRUE : JNI_FALSE;
 }
+
+static MTLPixelFormat backend_pixel_format(jint format) {
+  switch (format) {
+  case 0: return MTLPixelFormatR8Unorm;
+  case 1: return MTLPixelFormatR8Snorm;
+  case 2: return MTLPixelFormatRG8Unorm;
+  case 3: return MTLPixelFormatRG8Snorm;
+  case 6: return MTLPixelFormatRGBA8Unorm;
+  case 7: return MTLPixelFormatRGBA8Snorm;
+  case 8: return MTLPixelFormatR16Unorm;
+  case 9: return MTLPixelFormatR16Snorm;
+  case 10: return MTLPixelFormatRG16Unorm;
+  case 11: return MTLPixelFormatRG16Snorm;
+  case 14: return MTLPixelFormatRGBA16Unorm;
+  case 15: return MTLPixelFormatRGBA16Snorm;
+  case 16: return MTLPixelFormatR8Uint;
+  case 17: return MTLPixelFormatR8Sint;
+  case 18: return MTLPixelFormatRG8Uint;
+  case 19: return MTLPixelFormatRG8Sint;
+  case 22: return MTLPixelFormatRGBA8Uint;
+  case 23: return MTLPixelFormatRGBA8Sint;
+  case 24: return MTLPixelFormatR16Uint;
+  case 25: return MTLPixelFormatR16Sint;
+  case 26: return MTLPixelFormatRG16Uint;
+  case 27: return MTLPixelFormatRG16Sint;
+  case 30: return MTLPixelFormatRGBA16Uint;
+  case 31: return MTLPixelFormatRGBA16Sint;
+  case 32: return MTLPixelFormatR32Uint;
+  case 33: return MTLPixelFormatR32Sint;
+  case 34: return MTLPixelFormatRG32Uint;
+  case 35: return MTLPixelFormatRG32Sint;
+  case 38: return MTLPixelFormatRGBA32Uint;
+  case 39: return MTLPixelFormatRGBA32Sint;
+  case 40: return MTLPixelFormatR16Float;
+  case 41: return MTLPixelFormatRG16Float;
+  case 43: return MTLPixelFormatRGBA16Float;
+  case 44: return MTLPixelFormatR32Float;
+  case 45: return MTLPixelFormatRG32Float;
+  case 47: return MTLPixelFormatRGBA32Float;
+  case 48: return MTLPixelFormatRGB10A2Unorm;
+  case 49: return MTLPixelFormatRGB10A2Uint;
+  case 50: return MTLPixelFormatRG11B10Float;
+  case 51: return MTLPixelFormatDepth32Float;
+  case 52: return MTLPixelFormatDepth32Float_Stencil8;
+  case 53: return MTLPixelFormatDepth24Unorm_Stencil8;
+  case 54: return MTLPixelFormatDepth16Unorm;
+  case 55: return MTLPixelFormatStencil8;
+  default: return MTLPixelFormatInvalid;
+  }
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCreateBackendBuffer(
+    JNIEnv *, jclass, jlong size) {
+  ensure_device();
+  if (!g_device || size <= 0)
+    return 0;
+  id<MTLBuffer> buffer =
+      [g_device newBufferWithLength:(NSUInteger)size
+                            options:MTLResourceStorageModeShared];
+  return (jlong)(uintptr_t)buffer;
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nMapBackendBuffer(
+    JNIEnv *env, jclass, jlong bufferHandle, jlong offset, jlong length) {
+  id<MTLBuffer> buffer =
+      (id<MTLBuffer>)(void *)(uintptr_t)bufferHandle;
+  if (!buffer || offset < 0 || length < 0 ||
+      (NSUInteger)(offset + length) > buffer.length)
+    return nullptr;
+  uint8_t *bytes = (uint8_t *)buffer.contents + (NSUInteger)offset;
+  return env->NewDirectByteBuffer(bytes, length);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nDestroyBackendBuffer(
+    JNIEnv *, jclass, jlong bufferHandle) {
+  id<MTLBuffer> buffer =
+      (id<MTLBuffer>)(void *)(uintptr_t)bufferHandle;
+  [buffer release];
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCreateBackendTexture(
+    JNIEnv *, jclass, jint format, jint usage, jint width, jint height,
+    jint depthOrLayers, jint mipLevels) {
+  ensure_device();
+  MTLPixelFormat pixelFormat = backend_pixel_format(format);
+  if (!g_device || pixelFormat == MTLPixelFormatInvalid || width <= 0 ||
+      height <= 0 || depthOrLayers <= 0 || mipLevels <= 0)
+    return 0;
+
+  MTLTextureDescriptor *descriptor = [[MTLTextureDescriptor alloc] init];
+  descriptor.pixelFormat = pixelFormat;
+  descriptor.width = (NSUInteger)width;
+  descriptor.height = (NSUInteger)height;
+  descriptor.depth = 1;
+  descriptor.mipmapLevelCount = (NSUInteger)mipLevels;
+  descriptor.sampleCount = 1;
+  descriptor.storageMode = MTLStorageModeShared;
+  descriptor.cpuCacheMode = MTLCPUCacheModeDefaultCache;
+  descriptor.usage = MTLTextureUsageUnknown;
+  if ((usage & 4) != 0)
+    descriptor.usage |= MTLTextureUsageShaderRead;
+  if ((usage & 8) != 0)
+    descriptor.usage |= MTLTextureUsageRenderTarget;
+  if ((usage & 16) != 0) {
+    descriptor.textureType = MTLTextureTypeCube;
+    descriptor.arrayLength = 1;
+  } else if (depthOrLayers > 1) {
+    descriptor.textureType = MTLTextureType2DArray;
+    descriptor.arrayLength = (NSUInteger)depthOrLayers;
+  } else {
+    descriptor.textureType = MTLTextureType2D;
+    descriptor.arrayLength = 1;
+  }
+  id<MTLTexture> texture = [g_device newTextureWithDescriptor:descriptor];
+  [descriptor release];
+  return (jlong)(uintptr_t)texture;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nDestroyBackendTexture(
+    JNIEnv *, jclass, jlong textureHandle) {
+  id<MTLTexture> texture =
+      (id<MTLTexture>)(void *)(uintptr_t)textureHandle;
+  [texture release];
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCreateBackendTextureView(
+    JNIEnv *, jclass, jlong textureHandle, jint baseMipLevel,
+    jint mipLevels) {
+  id<MTLTexture> texture =
+      (id<MTLTexture>)(void *)(uintptr_t)textureHandle;
+  if (!texture || baseMipLevel < 0 || mipLevels <= 0 ||
+      (NSUInteger)(baseMipLevel + mipLevels) > texture.mipmapLevelCount)
+    return 0;
+  id<MTLTexture> view = [texture
+      newTextureViewWithPixelFormat:texture.pixelFormat
+                         textureType:texture.textureType
+                              levels:NSMakeRange((NSUInteger)baseMipLevel,
+                                                 (NSUInteger)mipLevels)
+                              slices:NSMakeRange(0, texture.arrayLength)];
+  return (jlong)(uintptr_t)view;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nDestroyBackendTextureView(
+    JNIEnv *, jclass, jlong viewHandle) {
+  id<MTLTexture> view = (id<MTLTexture>)(void *)(uintptr_t)viewHandle;
+  [view release];
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nCreateBackendSampler(
+    JNIEnv *, jclass, jint addressModeU, jint addressModeV, jint minFilter,
+    jint magFilter, jint maxAnisotropy, jdouble maxLod) {
+  ensure_device();
+  if (!g_device)
+    return 0;
+  MTLSamplerDescriptor *descriptor = [[MTLSamplerDescriptor alloc] init];
+  descriptor.sAddressMode = addressModeU == 0
+      ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
+  descriptor.tAddressMode = addressModeV == 0
+      ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
+  descriptor.rAddressMode = MTLSamplerAddressModeClampToEdge;
+  descriptor.minFilter = minFilter == 0
+      ? MTLSamplerMinMagFilterNearest : MTLSamplerMinMagFilterLinear;
+  descriptor.magFilter = magFilter == 0
+      ? MTLSamplerMinMagFilterNearest : MTLSamplerMinMagFilterLinear;
+  descriptor.mipFilter = minFilter == 0
+      ? MTLSamplerMipFilterNearest : MTLSamplerMipFilterLinear;
+  descriptor.maxAnisotropy = (NSUInteger)std::clamp(maxAnisotropy, 1, 16);
+  if (maxLod >= 0.0)
+    descriptor.lodMaxClamp = (float)maxLod;
+  id<MTLSamplerState> sampler = [g_device newSamplerStateWithDescriptor:descriptor];
+  [descriptor release];
+  return (jlong)(uintptr_t)sampler;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nDestroyBackendSampler(
+    JNIEnv *, jclass, jlong samplerHandle) {
+  id<MTLSamplerState> sampler =
+      (id<MTLSamplerState>)(void *)(uintptr_t)samplerHandle;
+  [sampler release];
+}

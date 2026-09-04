@@ -2,6 +2,20 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.1.11 - 2026-09-04
+
+### Added
+
+- Added Minecraft 26.2-compatible Metal implementations of `GpuBuffer`,
+  `GpuTexture`, `GpuTextureView`, and `GpuSampler`.
+- Added native creation, mapping, and deterministic release for Metal buffers,
+  textures, texture views, and sampler states.
+- Added a backend resource self-test that exercises all four resource types on
+  the real `GLFW_NO_API` window before the still-required command-encoder
+  fallback.
+- Added mappings from Minecraft GPU formats and texture usage flags to their
+  native Metal equivalents.
+
 ## 0.1.10 - 2026-09-04
 
 ### Fixed

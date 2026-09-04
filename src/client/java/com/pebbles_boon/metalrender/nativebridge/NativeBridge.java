@@ -156,6 +156,20 @@ public final class NativeBridge {
       float green, float blue);
   public static native void nDestroyDirectPresentationProbe();
   public static native boolean nProbeMetalBackendWindow(long cocoaView);
+  public static native long nCreateBackendBuffer(long size);
+  public static native java.nio.ByteBuffer nMapBackendBuffer(long buffer,
+      long offset, long length);
+  public static native void nDestroyBackendBuffer(long buffer);
+  public static native long nCreateBackendTexture(int format, int usage,
+      int width, int height, int depthOrLayers, int mipLevels);
+  public static native void nDestroyBackendTexture(long texture);
+  public static native long nCreateBackendTextureView(long texture,
+      int baseMipLevel, int mipLevels);
+  public static native void nDestroyBackendTextureView(long textureView);
+  public static native long nCreateBackendSampler(int addressModeU,
+      int addressModeV, int minFilter, int magFilter, int maxAnisotropy,
+      double maxLod);
+  public static native void nDestroyBackendSampler(long sampler);
   public static native void nRegisterChunkMesh(int cx, int cy, int cz,
       long bufferHandle, int quadCount, int opaqueQuadCount, int lodLevel);
   public static native void nUnregisterChunkMesh(int cx, int cy, int cz);
