@@ -26,7 +26,9 @@ public class MetalRenderClient implements ClientModInitializer {
     config = MetalRenderConfig.load();
     MetalHudOverlay.register();
     if (!config.enableMetalRendering) {
-      MetalLogger.info("MetalRender was killed by [user] using config menu");
+      MetalLogger.info("Legacy hybrid renderer disabled; Sodium will render "
+          + "without duplicate Metal chunk work. Enable only for development "
+          + "with -Dmetalrender.enabled=true");
       return;
     }
     try {

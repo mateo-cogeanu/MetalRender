@@ -1,6 +1,8 @@
 package com.pebbles_boon.metalrender.config;
 public final class MetalRenderConfig {
-  public boolean enableMetalRendering = true;
+  // The legacy hybrid path duplicates Sodium's chunk meshing and must remain
+  // opt-in while its Minecraft 26.2 render/presentation hooks are incomplete.
+  public boolean enableMetalRendering = false;
   public boolean enableSimpleLighting = true;
   public boolean enableDebugOverlay = false;
   public int zone1Radius = 16;
@@ -44,7 +46,7 @@ public final class MetalRenderConfig {
   private static volatile int dqSimulationDistanceStep = 1;
   public static MetalRenderConfig load() {
     MetalRenderConfig cfg = new MetalRenderConfig();
-    cfg.enableMetalRendering = getBool("metalrender.enabled", true);
+    cfg.enableMetalRendering = getBool("metalrender.enabled", false);
     loadFromSystemProperties();
     return cfg;
   }

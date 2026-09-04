@@ -2,6 +2,17 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.1.10 - 2026-09-04
+
+### Fixed
+
+- Disabled the incomplete legacy OpenGL/Metal hybrid renderer by default so it
+  no longer duplicates Sodium chunk scanning and mesh construction while
+  submitting zero Metal frames on Minecraft 26.2.
+- Kept the legacy hybrid path available for development with
+  `-Dmetalrender.enabled=true`; the independent no-OpenGL backend bootstrap is
+  still controlled by `-Dmetalrender.experimental.fullMetalBackend=true`.
+
 ## 0.1.9 - 2026-09-04
 
 ### Added
