@@ -3382,3 +3382,73 @@ Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nDestroyDirectPrese
   else
     dispatch_sync(dispatch_get_main_queue(), destroyLayer);
 }
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_pebbles_1boon_metalrender_nativebridge_NativeBridge_nProbeMetalBackendWindow(
+    JNIEnv *, jclass, jlong cocoaViewHandle) {
+  if (cocoaViewHandle == 0)
+    return JNI_FALSE;
+  ensure_device();
+  if (!g_device || !g_queue)
+    return JNI_FALSE;
+
+  __block bool presented = false;
+  void (^probeWindow)(void) = ^{
+    @autoreleasepool {
+      NSView *parent = (NSView *)(uintptr_t)cocoaViewHandle;
+      if (!parent)
+        return;
+
+      NSView *metalView =
+          [[NSView alloc] initWithFrame:parent.bounds];
+      metalView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+      metalView.wantsLayer = YES;
+
+      CAMetalLayer *layer = [[CAMetalLayer alloc] init];
+      layer.device = g_device;
+      layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+      layer.framebufferOnly = YES;
+      layer.opaque = YES;
+      CGFloat scale = parent.window ? parent.window.backingScaleFactor : 1.0;
+      layer.contentsScale = scale;
+      layer.drawableSize = CGSizeMake(
+          std::max((CGFloat)1.0, parent.bounds.size.width * scale),
+          std::max((CGFloat)1.0, parent.bounds.size.height * scale));
+      metalView.layer = layer;
+      [parent addSubview:metalView];
+      [metalView displayIfNeeded];
+
+      id<CAMetalDrawable> drawable = [layer nextDrawable];
+      if (drawable) {
+        id<MTLCommandBuffer> commandBuffer = [g_queue commandBuffer];
+        MTLRenderPassDescriptor *pass =
+            [MTLRenderPassDescriptor renderPassDescriptor];
+        pass.colorAttachments[0].texture = drawable.texture;
+        pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+        pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+        pass.colorAttachments[0].clearColor =
+            MTLClearColorMake(0.03, 0.20, 0.10, 1.0);
+        id<MTLRenderCommandEncoder> encoder =
+            [commandBuffer renderCommandEncoderWithDescriptor:pass];
+        [encoder endEncoding];
+        [commandBuffer presentDrawable:drawable];
+        [commandBuffer commit];
+        [commandBuffer waitUntilCompleted];
+        presented = commandBuffer.status == MTLCommandBufferStatusCompleted;
+      }
+
+      [metalView removeFromSuperview];
+      metalView.layer = nil;
+      [layer release];
+      [metalView release];
+    }
+  };
+
+  if ([NSThread isMainThread])
+    probeWindow();
+  else
+    dispatch_sync(dispatch_get_main_queue(), probeWindow);
+  dbg("GLFW_NO_API full-window Metal bootstrap: %s\n",
+      presented ? "presented" : "failed");
+  return presented ? JNI_TRUE : JNI_FALSE;
+}

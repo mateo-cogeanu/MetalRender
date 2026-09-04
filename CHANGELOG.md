@@ -2,6 +2,23 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.1.9 - 2026-09-04
+
+### Added
+
+- Added an opt-in Minecraft 26.2 `GpuBackend` bootstrap controlled by
+  `-Dmetalrender.experimental.fullMetalBackend=true`.
+- Added a native full-window `CAMetalLayer` presentation check on a
+  `GLFW_NO_API` window, proving that the backend can start without creating an
+  OpenGL context.
+- Added safe fallback to Minecraft's next graphics backend while Metal device,
+  resource, and command-encoder support is still under construction.
+
+### Fixed
+
+- Made the native build script explicitly compile as C++17 and removed its
+  incompatible ARC flag so the bundled renderer can be rebuilt reproducibly.
+
 ## 0.1.8 - 2026-09-04
 
 ### Added

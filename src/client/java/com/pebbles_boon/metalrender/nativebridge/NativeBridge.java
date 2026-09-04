@@ -155,6 +155,7 @@ public final class NativeBridge {
   public static native boolean nPresentDirectPresentationProbe(float red,
       float green, float blue);
   public static native void nDestroyDirectPresentationProbe();
+  public static native boolean nProbeMetalBackendWindow(long cocoaView);
   public static native void nRegisterChunkMesh(int cx, int cy, int cz,
       long bufferHandle, int quadCount, int opaqueQuadCount, int lodLevel);
   public static native void nUnregisterChunkMesh(int cx, int cy, int cz);
