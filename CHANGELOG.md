@@ -2,6 +2,31 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.2.4 - 2026-09-05
+
+### Fixed
+
+- Added a reproducible patch and build for the experimental Iris Vulkan renderer:
+  restored biome data, integer-vector uniform snapshots, Vulkan GLSL feature
+  support, and translation of an identifier that collided with a Metal keyword.
+- Advanced custom-uniform clocks and smoothing before world rendering so terrain
+  and screen passes use the same frame state.
+
+### Added
+
+- Added isolated development-run and quick-play arguments, dependency regression
+  checks, and a full-stack log audit that flags missing routes and shadow
+  substitutes rather than reporting final-pass compilation as success.
+
+### Verified
+
+- Passed native Metal bootstrap/command tests and compiled all nine active BSL
+  deferred/composite/final passes on Apple M4 through MoltenVK, with the existing
+  HIGH profile, Minecraft options, and shader archive unchanged.
+- Full shader rendering remains incomplete: comparison shadow samplers reject
+  terrain; real shadows, water, entities, and other scene routes are still absent
+  upstream. No performance improvement or visual parity is claimed.
+
 ## 0.2.3 - 2026-09-05
 
 ### Added

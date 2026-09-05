@@ -44,8 +44,13 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
   enables the fork's shader-pack screen-pass executor for that development
   run. Do not install stock Iris at the same time.
 - The experimental fork can execute some untouched BSL passes natively, but
-  full shader-pack output is not complete. Terrain, shadows, entities, water,
-  and several screen passes still need backend resources or routing.
+  full shader-pack output is not complete. The patched renderer compiles all
+  active BSL screen passes, but terrain, shadows, entities, and water still need
+  backend resources or routing. See the [full-stack test report](docs/renderer-stack-test.md).
+- Build the pinned, patched experimental dependency with
+  `scripts/build-iris-vulkan.sh`, then use
+  `-PirisVulkanJar=build/dependencies/iris-vulkan.jar`. The patch changes renderer
+  code only; shader-pack archives and user settings remain untouched.
 - The operational backend is translated through MoltenVK; it is not yet the
   pure native MSL path
 - To restore Minecraft's normal backend selection, launch with

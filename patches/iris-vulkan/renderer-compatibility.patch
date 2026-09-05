@@ -1,0 +1,165 @@
+diff --git a/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java b/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java
+index 2899f79..5d8d20e 100644
+--- a/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java
++++ b/common/src/main/java/net/irisshaders/iris/mixin/IrisMixinPlugin.java
+@@ -17,7 +17,9 @@ public class IrisMixinPlugin implements IMixinConfigPlugin {
+ 	private static final Set<String> BACKEND_NEUTRAL_MIXINS = Set.of(
+ 		"net.irisshaders.iris.mixin.GpuDeviceAccessor",
+ 		"net.irisshaders.iris.mixin.MixinOptions_Entrypoint",
+-		"net.irisshaders.iris.mixin.MixinItem"
++		"net.irisshaders.iris.mixin.MixinItem",
++		"net.irisshaders.iris.mixin.MixinBiome",
++		"net.irisshaders.iris.mixin.MixinBiomes"
+ 	);
+ 
+     public static boolean usingVulkan;
+diff --git a/common/src/main/java/net/irisshaders/iris/uniforms/custom/CustomUniforms.java b/common/src/main/java/net/irisshaders/iris/uniforms/custom/CustomUniforms.java
+index 4c8a299..4112409 100644
+--- a/common/src/main/java/net/irisshaders/iris/uniforms/custom/CustomUniforms.java
++++ b/common/src/main/java/net/irisshaders/iris/uniforms/custom/CustomUniforms.java
+@@ -26,6 +26,8 @@ import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
+ import org.joml.Matrix4f;
+ import org.joml.Matrix4fc;
+ import org.joml.Vector2f;
++import org.joml.Vector2i;
++import org.joml.Vector3i;
+ import org.joml.Vector3f;
+ import org.joml.Vector4f;
+ 
+@@ -283,7 +285,7 @@ public class CustomUniforms implements FunctionContext {
+ 			case "bool" -> value.booleanReturn;
+ 			case "int" -> value.intReturn;
+ 			case "float" -> value.floatReturn;
+-			case "vec2", "vec3", "vec4", "mat4" -> value.objectReturn;
++			case "vec2", "vec3", "vec4", "ivec2", "ivec3", "mat4" -> value.objectReturn;
+ 			default -> throw new AssertionError("Unhandled custom uniform type: " + type);
+ 		}));
+ 	}
+@@ -308,6 +310,8 @@ public class CustomUniforms implements FunctionContext {
+ 		private static Object copyValue(Object value) {
+ 			return switch (value) {
+ 				case Vector2f vector -> new Vector2f(vector);
++				case Vector2i vector -> new Vector2i(vector);
++				case Vector3i vector -> new Vector3i(vector);
+ 				case Vector3f vector -> new Vector3f(vector);
+ 				case Vector4f vector -> new Vector4f(vector);
+ 				case Matrix4fc matrix -> new Matrix4f(matrix);
+@@ -320,6 +324,8 @@ public class CustomUniforms implements FunctionContext {
+ 		if (type == Type.Boolean) return "bool";
+ 		if (type == Type.Int) return "int";
+ 		if (type == Type.Float) return "float";
++		if (type == VectorType.I_VEC2) return "ivec2";
++		if (type == VectorType.I_VEC3) return "ivec3";
+ 		if (type == VectorType.VEC2) return "vec2";
+ 		if (type == VectorType.VEC3) return "vec3";
+ 		if (type == VectorType.VEC4) return "vec4";
+diff --git a/common/src/main/java/net/irisshaders/iris/vulkan/IrisNativeVulkan.java b/common/src/main/java/net/irisshaders/iris/vulkan/IrisNativeVulkan.java
+index 1346e42..768fed3 100644
+--- a/common/src/main/java/net/irisshaders/iris/vulkan/IrisNativeVulkan.java
++++ b/common/src/main/java/net/irisshaders/iris/vulkan/IrisNativeVulkan.java
+@@ -284,7 +284,9 @@ public final class IrisNativeVulkan {
+ 
+ 	public static boolean beginFinalPassFrame() {
+ 		finalPassRenderedThisFrame = false;
+-		return prepareFinalPassForFrame();
++		if (!prepareFinalPassForFrame()) return false;
++		finalPassRenderer.beginFrame();
++		return true;
+ 	}
+ 
+ 	public static boolean prepareFinalPassForFrame() {
+diff --git a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanFinalPassRenderer.java b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanFinalPassRenderer.java
+index 645b4b0..5b2c0d1 100644
+--- a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanFinalPassRenderer.java
++++ b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanFinalPassRenderer.java
+@@ -49,9 +49,13 @@ public final class IrisVulkanFinalPassRenderer {
+ 		}
+ 	}
+ 
+-	public void render() {
++	public void beginFrame() {
++		IrisVulkanUniformSnapshot.beginFrame();
+ 		frameUpdateNotifier.onNewFrame();
+ 		customUniforms.beginFrame();
++	}
++
++	public void render() {
+ 		executor.render();
+ 	}
+ 
+diff --git a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanScreenPassExecutor.java b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanScreenPassExecutor.java
+index b3a8c40..0d6892d 100644
+--- a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanScreenPassExecutor.java
++++ b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanScreenPassExecutor.java
+@@ -218,7 +218,6 @@ public final class IrisVulkanScreenPassExecutor {
+ 	}
+ 
+ 	public void render() {
+-		IrisVulkanUniformSnapshot.beginFrame();
+ 		if (!graph.hasRunnablePasses()) {
+ 			IrisVulkanGbufferTargets.finishFrame();
+ 			return;
+diff --git a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanShaderResources.java b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanShaderResources.java
+index ac10087..aabd051 100644
+--- a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanShaderResources.java
++++ b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanShaderResources.java
+@@ -145,7 +145,21 @@ public final class IrisVulkanShaderResources {
+ 		RenderPipeline pipeline = extendPipeline(original, resources, vertexFormats, colorTargetCount);
+ 		RESOURCE_SETS.put(pipeline, resources);
+ 
+-		return new Prepared(patchedVertex, patchedFragment, pipeline, resources);
++		// Legacy pack sources have already been translated to core syntax here.
++		// Compile that generated source as Vulkan GLSL, including textureGather.
++		return new Prepared(vulkanVersion(patchedVertex), vulkanVersion(patchedFragment), pipeline, resources);
++	}
++
++	private static String vulkanVersion(String source) {
++		// MoltenVK preserves some SPIR-V identifiers in generated MSL. "new"
++		// is legal in GLSL but a keyword in MSL's C++ dialect.
++		String replacement = "iris_msl_new";
++		while (source.contains(replacement)) replacement += "_";
++		String renamed = source.replaceAll("\\bnew\\b", replacement);
++		Matcher version = Pattern.compile("(?m)^\\s*#version\\s+(\\d+)[^\\r\\n]*").matcher(renamed);
++		if (!version.find()) throw new IllegalArgumentException("Missing GLSL version");
++		int target = Math.max(450, Integer.parseInt(version.group(1)));
++		return version.replaceFirst("#version " + target + " core");
+ 	}
+ 
+ 	private static String patchScreenPassVertexLocations(String source) {
+diff --git a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanUniformSnapshot.java b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanUniformSnapshot.java
+index 556e34b..0a9317e 100644
+--- a/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanUniformSnapshot.java
++++ b/common/src/main/java/net/irisshaders/iris/vulkan/IrisVulkanUniformSnapshot.java
+@@ -46,7 +46,6 @@ public final class IrisVulkanUniformSnapshot {
+ 	private static volatile CustomUniforms activeCustomUniforms;
+ 	private static int previousFrame = Integer.MIN_VALUE;
+ 	private static boolean loggedDebugUniforms;
+-	private static long previousVulkanFrameNanos;
+ 	private static float vulkanFrameTime = 1.0f / 60.0f;
+ 	private static float vulkanFrameTimeCounter;
+ 	private static int vulkanFrameCounter;
+@@ -55,17 +54,13 @@ public final class IrisVulkanUniformSnapshot {
+ 	}
+ 
+ 	public static synchronized void beginFrame() {
+-		long now = System.nanoTime();
+-		if (previousVulkanFrameNanos != 0L) {
+-			float elapsed = (now - previousVulkanFrameNanos) * 1.0e-9f;
+-			vulkanFrameTime = Math.clamp(elapsed, 0.001f, 0.25f);
+-		}
+-		previousVulkanFrameNanos = now;
+-		vulkanFrameTimeCounter += vulkanFrameTime;
+-		if (vulkanFrameTimeCounter >= 3600.0f) {
+-			vulkanFrameTimeCounter = 0.0f;
+-		}
+-		vulkanFrameCounter = (vulkanFrameCounter + 1) % 720720;
++		// Drive the same clock used by custom expressions and smoothing. Advance
++		// it before terrain and screen passes so they observe a single frame.
++		SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
++		SystemTimeUniforms.COUNTER.beginFrame();
++		vulkanFrameTime = SystemTimeUniforms.TIMER.getLastFrameTime();
++		vulkanFrameTimeCounter = SystemTimeUniforms.TIMER.getFrameTimeCounter();
++		vulkanFrameCounter = SystemTimeUniforms.COUNTER.getAsInt();
+ 	}
+ 
+ 	public static synchronized void registerActiveCustomUniforms(CustomUniforms customUniforms) {

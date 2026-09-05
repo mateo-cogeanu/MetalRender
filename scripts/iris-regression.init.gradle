@@ -1,0 +1,9 @@
+gradle.projectsEvaluated {
+    def fabric = gradle.rootProject.project(':fabric')
+    fabric.tasks.register('metalrenderRegression', JavaExec) {
+        dependsOn fabric.tasks.named('classes')
+        classpath = fabric.sourceSets.main.runtimeClasspath
+        mainClass = new File(System.getProperty('metalrender.root'), 'tests/iris/RendererRegression.java').absolutePath
+        jvmArgs '--enable-preview', '--enable-native-access=ALL-UNNAMED'
+    }
+}

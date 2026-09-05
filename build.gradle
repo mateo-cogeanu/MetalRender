@@ -55,6 +55,13 @@ loom {
         client {
             client()
             source sourceSets.client
+            if (project.hasProperty('rendererTestRunDir')) {
+                runDir project.property('rendererTestRunDir').toString()
+            }
+            if (project.hasProperty('rendererTestWorld')) {
+                programArg '--quickPlaySingleplayer'
+                programArg project.property('rendererTestWorld').toString()
+            }
             vmArg "-Djava.library.path=${projectDir}/src/main/resources"
             vmArg "--enable-preview"
             vmArg "--enable-native-access=ALL-UNNAMED"
