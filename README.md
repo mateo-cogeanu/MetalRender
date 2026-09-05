@@ -34,10 +34,18 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
 
 - Only works on Metal (macOS)
 - Will still load on other GPUs but won't offer any additional benefits or changes
-- Iris 1.11.2 can coexist with the no-OpenGL backend and complete title-screen
-  loading. Its shader-pack selection menu is also usable on Vulkan.
-  Shader-pack rendering is not enabled yet; the GLSL-to-SPIR-V compiler and
-  Vulkan render-pass integration are the next milestone.
+- Stock Iris 1.11.2 can coexist with the no-OpenGL backend, complete
+  title-screen loading, and open its shader-pack selection menu. It cannot
+  render shader packs on Vulkan by itself.
+- Experimental shader execution can be tested with the Minecraft 26.2
+  [iris4vulkan fork](https://github.com/fangbm/iris4vulkan). Build that fork,
+  set Minecraft's preferred graphics backend to Vulkan, then launch this
+  project with `-PirisVulkanJar=/absolute/path/to/iris-fabric.jar`. MetalRender
+  enables the fork's shader-pack screen-pass executor for that development
+  run. Do not install stock Iris at the same time.
+- The experimental fork can execute some untouched BSL passes natively, but
+  full shader-pack output is not complete. Terrain, shadows, entities, water,
+  and several screen passes still need backend resources or routing.
 - The operational backend is translated through MoltenVK; it is not yet the
   pure native MSL path
 - To restore Minecraft's normal backend selection, launch with

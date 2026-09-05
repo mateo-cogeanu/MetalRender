@@ -2,6 +2,28 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.2.3 - 2026-09-05
+
+### Added
+
+- Added an experimental development profile for the Minecraft 26.2
+  `iris4vulkan` fork, selected with `-PirisVulkanJar=/path/to/iris.jar`.
+- Added compatibility mixins that keep Iris' remaining texture bookkeeping,
+  debug labels, and placeholder vanilla pipeline code away from OpenGL while
+  the Vulkan fork owns shader compilation and render-target management.
+- Added runtime mixin selection so the stock-Iris startup shims and the Vulkan
+  fork's native initialization do not conflict.
+
+### Verified
+
+- Loaded an untouched BSL 10.1.3 shader pack, built its native Vulkan screen
+  render graph, allocated its color targets, compiled multiple BSL passes,
+  generated Vulkan mipmaps, and submitted its final pass directly to
+  Minecraft's Vulkan main-color image on an Apple M4 through MoltenVK.
+- Full BSL output is not yet correct: the experimental Iris fork still rejects
+  terrain and several deferred/composite passes because live biome/eye
+  uniforms and depth-comparison shadow samplers are not implemented.
+
 ## 0.2.2 - 2026-09-05
 
 ### Fixed

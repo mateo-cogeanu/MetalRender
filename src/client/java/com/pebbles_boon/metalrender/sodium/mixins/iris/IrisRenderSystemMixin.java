@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Prevents Iris from initializing OpenGL-only renderer state on Vulkan. */
 @Pseudo
@@ -16,6 +17,34 @@ public abstract class IrisRenderSystemMixin {
       CallbackInfo callback) {
     if (MetalGpuBackend.isRequested()) {
       callback.cancel();
+    }
+  }
+
+  @Inject(method = "getMaxImageUnits", at = @At("HEAD"), cancellable = true)
+  private static void metalrender$useVulkanImageUnitLimit(
+      CallbackInfoReturnable<Integer> callback) {
+    if (MetalGpuBackend.isRequested()) {
+      callback.setReturnValue(8);
+    }
+  }
+
+  @Inject(
+      method = {"supportsSSBO", "supportsImageLoadStore",
+          "supportsBufferBlending", "supportsCompute"},
+      at = @At("HEAD"),
+      cancellable = true)
+  private static void metalrender$reportVulkanShaderFeatures(
+      CallbackInfoReturnable<Boolean> callback) {
+    if (MetalGpuBackend.isRequested()) {
+      callback.setReturnValue(true);
+    }
+  }
+
+  @Inject(method = "supportsTesselation", at = @At("HEAD"), cancellable = true)
+  private static void metalrender$reportNoPortableTessellation(
+      CallbackInfoReturnable<Boolean> callback) {
+    if (MetalGpuBackend.isRequested()) {
+      callback.setReturnValue(false);
     }
   }
 }

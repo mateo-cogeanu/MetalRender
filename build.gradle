@@ -17,6 +17,10 @@ repositories {
     }
     mavenCentral()
     maven {
+        name = "CaffeineMC"
+        url = "https://maven.caffeinemc.net/releases"
+    }
+    maven {
         name = "Modrinth"
         url = "https://api.modrinth.com/maven"
     }
@@ -34,8 +38,14 @@ dependencies {
     implementation "org.lwjgl:lwjgl:3.3.3:natives-macos"
     implementation "org.lwjgl:lwjgl-glfw:3.3.3:natives-macos"
     implementation 'org.joml:joml:1.10.5'
-    implementation "maven.modrinth:sodium:mc26.2-0.9.1-fabric"
-    implementation "maven.modrinth:iris:1.11.2+26.2-fabric"
+    def irisVulkanJar = providers.gradleProperty("irisVulkanJar").orNull
+    if (irisVulkanJar != null) {
+        implementation "net.caffeinemc:sodium-fabric:0.9.1-beta.3+mc26.2"
+        implementation files(irisVulkanJar)
+    } else {
+        implementation "maven.modrinth:sodium:mc26.2-0.9.1-fabric"
+        implementation "maven.modrinth:iris:1.11.2+26.2-fabric"
+    }
 }
 
 loom {
@@ -48,6 +58,11 @@ loom {
             vmArg "-Djava.library.path=${projectDir}/src/main/resources"
             vmArg "--enable-preview"
             vmArg "--enable-native-access=ALL-UNNAMED"
+
+            if (project.hasProperty('irisVulkanJar')) {
+                vmArg "-Diris.vulkan.screenPassMode=all"
+                vmArg "-Diris.vulkan.screenPassDrawMode=shaderpack"
+            }
             
             if (project.hasProperty('gl2metal')) {
                 vmArg "-Dmetalrender.gl2metal=true"
