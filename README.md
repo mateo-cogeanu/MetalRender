@@ -35,8 +35,9 @@ MetalRender is inspired by Nvidium (the amazing mod for Nvidia GPUs that makes y
 - Only works on Metal (macOS)
 - Will still load on other GPUs but won't offer any additional benefits or changes
 - Iris 1.11.2 can coexist with the no-OpenGL backend and complete title-screen
-  loading. Shader-pack rendering is not enabled yet; the GLSL-to-SPIR-V
-  compiler and Vulkan render-pass integration are the next milestone.
+  loading. Its shader-pack selection menu is also usable on Vulkan.
+  Shader-pack rendering is not enabled yet; the GLSL-to-SPIR-V compiler and
+  Vulkan render-pass integration are the next milestone.
 - The operational backend is translated through MoltenVK; it is not yet the
   pure native MSL path
 - To restore Minecraft's normal backend selection, launch with

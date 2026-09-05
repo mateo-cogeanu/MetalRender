@@ -2,6 +2,21 @@
 
 All notable changes to MetalRender are documented in this file.
 
+## 0.2.2 - 2026-09-05
+
+### Fixed
+
+- Fixed the Iris shader-pack menu crashing on Vulkan because its custom button
+  widgets unconditionally changed OpenGL blend and depth-test state.
+- Kept Iris' custom buttons on Minecraft's backend-neutral GUI pipelines while
+  retaining their original OpenGL behavior when MetalRender's Vulkan backend
+  is disabled.
+
+### Verified
+
+- Forced the Iris shader-pack screen open during a no-OpenGL development smoke
+  test and kept it in the live render loop without a native GL abort.
+
 ## 0.2.1 - 2026-09-04
 
 ### Added
